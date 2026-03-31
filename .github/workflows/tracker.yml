@@ -1,0 +1,18 @@
+name: Issue Tracker Automation
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  move-issue:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Move issue to Done
+        run: |
+          echo "Move issue logic here (curl command)"
