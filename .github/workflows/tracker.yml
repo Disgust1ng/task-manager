@@ -1,18 +1,34 @@
-name: Issue Tracker Automation
+name: GitHub Projects Automation
 
 on:
   pull_request:
     types: [closed]
 
 jobs:
-  move-issue:
+  move-issue-to-done:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v2
-
-      - name: Move issue to Done
+      - name: Move linked issue to Done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Move issue logic here (curl command)"
+          echo "Getting issue number from PR..."
+
+          ISSUE_NUMBER=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH" | grep -oE '#[0-9]+' | tr -d '#')
+
+          echo "Issue number: $ISSUE_NUMBER"
+
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "No linked issue found."
+            exit 0
+          fi
+
+          echo "Closing issue..."
+
+          curl -X PATCH \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER \
+            -d '{"state":"closed"}'
