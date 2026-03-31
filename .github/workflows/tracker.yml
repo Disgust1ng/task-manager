@@ -10,25 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Move linked issue to Done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract issue number
+        id: extract
         run: |
-          echo "Getting issue number from PR..."
+          echo "PR body:"
+          echo "${{ github.event.pull_request.body }}"
 
-          ISSUE_NUMBER=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH" | grep -oE '#[0-9]+' | tr -d '#')
+          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE '#[0-9]+' | head -n 1 | tr -d '#')
 
           echo "Issue number: $ISSUE_NUMBER"
 
-          if [ -z "$ISSUE_NUMBER" ]; then
-            echo "No linked issue found."
-            exit 0
-          fi
+          echo "issue=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
 
-          echo "Closing issue..."
-
+      - name: Close issue using curl
+        if: steps.extract.outputs.issue != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           curl -X PATCH \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.extract.outputs.issue }} \
             -d '{"state":"closed"}'
